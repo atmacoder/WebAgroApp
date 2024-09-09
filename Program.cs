@@ -1,49 +1,83 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using WebAgroApp.Models;
+using WebAgroApp.Services;
+using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Добавление сервисов
+// РќР°СЃС‚СЂРѕР№РєР° СЃРµСЂРІРёСЃРѕРІ
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddScoped<IUserService, UserService>();
 
-// Настройка аутентификации JWT
+// Р РµРіРёСЃС‚СЂР°С†РёСЏ MyDbContext
+builder.Services.AddDbContext<MyDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
+);
+
+// РќР°СЃС‚СЂРѕР№РєР° CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("CorsPolicy", policy =>
+    {
+        policy.WithOrigins("http://localhost:3000", "https://localhost:5173")
+               .AllowAnyMethod()
+               .AllowAnyHeader();
+    });
+});
+
+// РќР°СЃС‚СЂРѕР№РєР° Р°СѓС‚РµРЅС‚РёС„РёРєР°С†РёРё JWT
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidateIssuer = true, // РџСЂРѕРІРµСЂРєР° РІС‹РґР°РІС€РµРіРѕ С‚РѕРєРµРЅ
+            ValidIssuer = builder.Configuration["Jwt:Issuer"], // Р’С‹РґР°РІС€РёР№ С‚РѕРєРµРЅ
 
-            ValidateAudience = true,
-            ValidAudience = builder.Configuration["Jwt:Audience"],
+            ValidateAudience = true, // РџСЂРѕРІРµСЂРєР° Р°СѓРґРёС‚РѕСЂРёРё С‚РѕРєРµРЅР°
+            ValidAudience = builder.Configuration["Jwt:Audience"], // РђСѓРґРёС‚РѕСЂРёСЏ С‚РѕРєРµРЅР°
 
-            ValidateLifetime = true,
+            ValidateLifetime = true, // РџСЂРѕРІРµСЂРєР° СЃСЂРѕРєР° РґРµР№СЃС‚РІРёСЏ С‚РѕРєРµРЅР°
 
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Secret"])), // РљР»СЋС‡ РґР»СЏ РїРѕРґРїРёСЃРё С‚РѕРєРµРЅР°
         };
     });
 
-// Другие сервисы, например, для доступа к базе данных
+// Р”РѕР±Р°РІСЊС‚Рµ AddAuthorization()
+builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-// Настройка конвейера HTTP-запросов
+// РќР°СЃС‚СЂРѕР№РєР° РєРѕРЅРІРµР№РµСЂР° HTTP-Р·Р°РїСЂРѕСЃРѕРІ
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 
-// Включение аутентификации
+app.UseRouting();
+
+// Р’СЃС‚Р°РІСЊС‚Рµ СЌС‚РѕС‚ РєРѕРґ
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllers();
+app.UseCors("CorsPolicy"); // Р’РєР»СЋС‡РµРЅРёРµ CORS
+
+// **Р”РѕР±Р°РІСЊС‚Рµ MyDbContext РІ РєРѕРЅСЃС‚СЂСѓРєС‚РѕСЂ AuthController**
+app.MapGet("/", () => "Hello World!");
+
+app.MapControllers()
+    .WithMetadata(
+        new FromServicesAttribute()
+    );
 
 app.Run();
