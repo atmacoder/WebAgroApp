@@ -11,8 +11,8 @@ WebAgroApp - Веб-приложение для управления агроб�
 
 Технологии:
 
-- ASP.NET Core
-- Nuxt 3
+- ASP.NET Core [backend]
+- Nuxt 3 [frontend]
 - Entity Framework Core
 - Tailwind css
 - JWT Token Авторизация
